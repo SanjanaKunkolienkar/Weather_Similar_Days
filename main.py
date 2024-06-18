@@ -40,12 +40,12 @@ logger.info(f"{CheckResultForError(result, 'Solved Power Flow')}")
 # get a list of files in the pww_filepath directory
 files = os.listdir(pww_filepath)
 
-var_list = ['Date', 'Hour', 'TimeDomainWeatherSummary', 'TimeDomainWeatherSummary:1', 'TimeDomainWeatherSummary:2']
-for i in range(1, 2680):
-    var_list.append(f'TimeDomainWeatherTemp:{i}')
-i=0
-df_results = pd.DataFrame(columns=var_list)
-print(df_results.head())
+# var_list = ['Date', 'Hour', 'TimeDomainWeatherSummary', 'TimeDomainWeatherSummary:1', 'TimeDomainWeatherSummary:2']
+# for i in range(1, 2680):
+#     var_list.append(f'TimeDomainWeatherTemp:{i}')
+# i=0
+# df_results = pd.DataFrame(columns=var_list)
+
 #pd.DataFrame(columns = ['Date', 'TempAvg', 'TempMin', 'TempMax', 'DewPointAvg', 'DewPointMin', 'DewPointMax',
               #    'WindSpeedAvg', 'WindSpeedMin', 'WindSpeedMax', 'WindDirAvg', 'WindDirMin', 'WindDirMax',
                #   'CloudCoverAvg', 'CloudCoverMin', 'CloudCoverMax', 'WindSpeed100Avg', 'WindSpeed100Min', 'WindSpeed100Max',
@@ -57,7 +57,7 @@ for file in files:
     result_timestep = pw_object.RunScriptCommand(command)
     logger.info(f"{CheckResultForError(result_timestep, 'PWW file loaded successfully')}")
 
-    result_temp = pw_object.GetParametersMultipleElement('TempF', var_list, '')
+    result_temp = pw_object.GetParametersMultipleElement('Timepoint', ['DSC::Timepoint_TimeDomainWeatherTemp:3'], '')
     logger.info(f"{CheckResultForError(result_temp, 'Data saved successfully')}")
     data = result_temp[1]
     print(data)
