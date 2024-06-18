@@ -38,7 +38,7 @@ result = pw_object.RunScriptCommand('SolvePowerFlow(DC);')
 logger.info(f"{CheckResultForError(result, 'Solved Power Flow')}")
 
 # get a list of files in the pww_filepath directory
-#files = os.listdir(pww_filepath)
+files = os.listdir(pww_filepath)
 
 var_list = ['Date', 'TimeDomainWeatherSummary']
 for i in range(1, 24):
