@@ -40,14 +40,16 @@ logger.info(f"{CheckResultForError(result, 'Solved Power Flow')}")
 # get a list of files in the pww_filepath directory
 files = os.listdir(pww_filepath)
 
-var_list = ['Date', 'TimeDomainWeatherSummary']
-for i in range(1, 24):
-    var_list.append(f'TimeDomainWeatherSummary:{i}')
-
-df_results = pd.DataFrame(columns = ['Date', 'TempAvg', 'TempMin', 'TempMax', 'DewPointAvg', 'DewPointMin', 'DewPointMax',
-                  'WindSpeedAvg', 'WindSpeedMin', 'WindSpeedMax', 'WindDirAvg', 'WindDirMin', 'WindDirMax',
-                  'CloudCoverAvg', 'CloudCoverMin', 'CloudCoverMax', 'WindSpeed100Avg', 'WindSpeed100Min', 'WindSpeed100Max',
-                  'GlobHorIrradAvg', 'GlobHorIrradMin', 'GlobHorIrradMax', 'DirNormIrradAvg', 'DirNormIrradMin', 'DirNormIrradMax'])
+var_list = ['Date', 'Hour', 'TimeDomainWeatherSummary', 'TimeDomainWeatherSummary:1', 'TimeDomainWeatherSummary:2']
+for i in range(1, 2680):
+    var_list.append(f'TimeDomainWeatherTemp:{i}')
+i=0
+df_results = pd.DataFrame(columns=var_list)
+print(df_results.head())
+#pd.DataFrame(columns = ['Date', 'TempAvg', 'TempMin', 'TempMax', 'DewPointAvg', 'DewPointMin', 'DewPointMax',
+              #    'WindSpeedAvg', 'WindSpeedMin', 'WindSpeedMax', 'WindDirAvg', 'WindDirMin', 'WindDirMax',
+               #   'CloudCoverAvg', 'CloudCoverMin', 'CloudCoverMax', 'WindSpeed100Avg', 'WindSpeed100Min', 'WindSpeed100Max',
+                #  'GlobHorIrradAvg', 'GlobHorIrradMin', 'GlobHorIrradMax', 'DirNormIrradAvg', 'DirNormIrradMin', 'DirNormIrradMax'])
 for file in files:
     print("Filename: ", file[:-4])
     pww_file = os.path.join(pww_filepath, file)
@@ -55,25 +57,24 @@ for file in files:
     result_timestep = pw_object.RunScriptCommand(command)
     logger.info(f"{CheckResultForError(result_timestep, 'PWW file loaded successfully')}")
 
-    result_temp = pw_object.GetParametersMultipleElement('Timepoint', var_list, '')
+    result_temp = pw_object.GetParametersMultipleElement('TempF', var_list, '')
     logger.info(f"{CheckResultForError(result_temp, 'Data saved successfully')}")
     data = result_temp[1]
+    print(data)
     df_data = pd.DataFrame({f"Column{i + 1}": [x.strip() if x is not None else None for x in column] for i, column in
                               enumerate(data)})
-    df_data.columns = ['Date', 'TempAvg', 'TempMin', 'TempMax', 'DewPointAvg', 'DewPointMin', 'DewPointMax',
-                  'WindSpeedAvg', 'WindSpeedMin', 'WindSpeedMax', 'WindDirAvg', 'WindDirMin', 'WindDirMax',
-                  'CloudCoverAvg', 'CloudCoverMin', 'CloudCoverMax', 'WindSpeed100Avg', 'WindSpeed100Min', 'WindSpeed100Max',
-                  'GlobHorIrradAvg', 'GlobHorIrradMin', 'GlobHorIrradMax', 'DirNormIrradAvg', 'DirNormIrradMin', 'DirNormIrradMax']
-    print(df_data.tail(5))
+    #rename columns
+    df_data.columns = var_list
+    print(df_data.head(5))
     #conver all columns except Date to float
     df_data.iloc[:, 1:] = df_data.iloc[:, 1:].astype(float)
 
     command_del = 'TimeStepDeleteAll;'
     result_timestep = pw_object.RunScriptCommand(command_del)
 
-    df_byday = df_data.groupby('Date').mean()
+    #df_byday = df_data.groupby('Date').mean()
     # combine dataframe df_byday for all for loops
-    df_results = pd.concat([df_results, df_byday])
+    df_results = pd.concat([df_results, df_data])
 
-df_results.to_csv('D:/Github_extras/Texas_1940-2023/Texas_1940_2023.csv')
+df_results.to_csv('D:/Github_extras/Texas_1940-2023/Texas_1940_2023_test.csv')
 
