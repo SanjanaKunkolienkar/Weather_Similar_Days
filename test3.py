@@ -127,8 +127,7 @@ print(daily_vectors.head(5))
 # Convert features into a proper 2D array
 features_matrix = np.stack(daily_vectors['Features'].values)
 
-min_components = min(features_matrix.shape)
-pca = PCA(n_components=0.95)#min(min_components, 5))  # PCA with a safe number of components
+pca = PCA(n_components=0.95)
 pca_features = pca.fit_transform(features_matrix)
 
 # Nearest Neighbors for finding similar days
