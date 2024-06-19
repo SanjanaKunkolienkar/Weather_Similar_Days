@@ -39,20 +39,16 @@ else:
     start_station = data.find('{', start_index_stations) + 1
     end_station = data.find('}', start_station)
     data_block_stations = data[start_station:end_station].strip()
-
     # Split the extracted string into lines and remove quotes
     data_lines_stations = data_block_stations.split('\n')
     cleaned_lines_stations  = [line.replace('"', '').strip().split() for line in data_lines_stations if line.strip()]
-
     # Load the cleaned lines into a DataFrame
     df_stations = pd.DataFrame(cleaned_lines_stations, columns=['Name','Latitude','Longitude','ElevationMeters','ICAO','WMO','Country2','Region'])
-
-    #print(df_stations)
 
 # get a list of files in the pww_filepath directory
 # filepath =
 # files = os.listdir(filepath)
-# Find the header and then the curly braces following it
+# Find the header and then the curly braces following it in the pw aux file
 if start_index_measurements == -1:
     print("Header for Stations not found")
 else:
@@ -82,27 +78,27 @@ df_measurements_tx[['Date', 'Hour']] = df_measurements_tx['UTCISO8601'].str.spli
 # rename WhoAmI to Station, TempF to Temperature, DewPointF to DewPoint, WindSpeedmph to Wind Speed
 # delete the 'UTCISO8601' column, 'WindDirection' column, and 'CloudCoverPerc' column
 # renumber the index
-df_measurements_tx = df_measurements_tx.rename(columns={'WhoAmI': 'Station', 'TempF': 'Temperature', 'DewPointF': 'DewPoint',
-                                                        'WindSpeedmph': 'Wind Speed', 'WindDirection': 'Wind Direction',
+df_measurements_tx = df_measurements_tx.rename(columns={'WhoAmI': 'Station', 'TempF': 'Temperature', 'DewPointF': 'Dew Point',
+                                                        'WindSpeedmph': 'Wind Speed',
                                                         'CloudCoverPerc': 'Cloud Cover'})
-df_measurements_tx = df_measurements_tx.drop(columns=['UTCISO8601'])
+df_measurements_tx = df_measurements_tx.drop(columns=['UTCISO8601', 'WindDirection'])
 df_measurements_tx = df_measurements_tx.reset_index(drop=True)
 #convert Temperature, DewPoint, and Wind Speed to float
 # drop rows with none values
 #df_measurements_tx = df_measurements_tx.dropna()
-df_measurements_tx[['Temperature', 'DewPoint', 'Wind Speed', 'Wind Direction', 'Cloud Cover']] = (
-    df_measurements_tx[['Temperature', 'DewPoint', 'Wind Speed', 'Wind Direction', 'Cloud Cover']].astype(float))
+df_measurements_tx[['Temperature', 'Dew Point', 'Wind Speed', 'Cloud Cover']] = (
+    df_measurements_tx[['Temperature', 'Dew Point', 'Wind Speed', 'Cloud Cover']].astype(float))
 # print(df_measurements_tx)
 # print(df_stations_tx)
 
 df = df_measurements_tx.interpolate(method='linear')
 
 #average the temperature, dewpoint, and wind speed for each time of the day
-df = df.groupby(['Date', 'Hour']).agg({'Temperature': 'mean', 'DewPoint': 'mean',
-                                       'Wind Speed': 'mean', 'Cloud Cover': 'mean'}).reset_index()
+# df = df.groupby(['Date', 'Hour']).agg({'Temperature': 'mean', 'DewPoint': 'mean',
+#                                        'Wind Speed': 'mean', 'Cloud Cover': 'mean'}).reset_index()
 df['DateTime'] = pd.to_datetime(df['Date'].astype(str) + ' ' + df['Hour'])
 #calculate mean of the wind direciton of all stations at one time point
-df['Wind Direction'] = df_measurements_tx.groupby(['Date', 'Hour'])['Wind Direction'].transform(mean_angle_deg)
+# df['Wind Direction'] = df_measurements_tx.groupby(['Date', 'Hour'])['Wind Direction'].transform(mean_angle_deg)
 # plt.figure(figsize=(15, 10))
 # for date in df['Date'].unique():
 #     daily_data = df[df['Date'] == date]
@@ -116,10 +112,10 @@ df['Wind Direction'] = df_measurements_tx.groupby(['Date', 'Hour'])['Wind Direct
 # plt.grid(True)
 # plt.show()
 
-print(df.head(48))
+# print(df.head(48))
 # Normalize the data
 scaler = StandardScaler()
-numeric_columns = ['Temperature', 'DewPoint', 'Wind Speed']
+numeric_columns = ['Temperature', 'Dew Point', 'Wind Speed']
 df[numeric_columns] = scaler.fit_transform(df[numeric_columns])
 
 # Reshape data: each row is a day with all hourly readings flattened into a single vector
@@ -131,9 +127,8 @@ print(daily_vectors.head(5))
 # Convert features into a proper 2D array
 features_matrix = np.stack(daily_vectors['Features'].values)
 
-# Applying PCA if possible (with correct dimensionality)
 min_components = min(features_matrix.shape)
-pca = PCA(n_components=min(min_components, 5))  # PCA with a safe number of components
+pca = PCA(n_components=0.95)#min(min_components, 5))  # PCA with a safe number of components
 pca_features = pca.fit_transform(features_matrix)
 
 # Nearest Neighbors for finding similar days
@@ -141,8 +136,7 @@ neighbors = NearestNeighbors(n_neighbors=2)
 neighbors.fit(pca_features)
 distances, indices = neighbors.kneighbors(pca_features)
 
-# Example of plotting two similar days
-similar_days_indices = indices[0]  # First set of indices for similar days
+similar_days_indices = indices[0]  # gets day similar to day 1
 dates_to_plot = daily_vectors.iloc[similar_days_indices]['Date']
 
 # Filtering DataFrame to include only the similar days
@@ -151,13 +145,9 @@ data_to_plot = df[df['Date'].isin(dates_to_plot)].copy()
 data_to_plot['Hour'] = data_to_plot['DateTime'].dt.hour  # Extract hour for plotting
 
 # Define colors for each day
-colors = ['blue', 'green', 'red']  # Extend or change colors as needed
-
-# Create a figure with subplots
-fig, axes = plt.subplots(nrows=3, figsize=(14, 18), sharex=True)  # 3 rows for each weather metric
-
-# Plot each metric
-metrics = ['Temperature', 'DewPoint', 'Wind Speed']
+colors = ['blue', 'green', 'red']
+fig, axes = plt.subplots(nrows=3, figsize=(14, 18), sharex=True)
+metrics = ['Temperature', 'Dew Point', 'Wind Speed']
 y_labels = ['Normalized Temperature', 'Normalized DewPoint', 'Normalized Wind Speed']
 
 for ax, metric, y_label in zip(axes, metrics, y_labels):
@@ -170,9 +160,42 @@ for ax, metric, y_label in zip(axes, metrics, y_labels):
 
 # Only set x-label on the last subplot
 axes[-1].set_xlabel('Hour of the Day')
-plt.xticks(np.arange(0, 24, 1))  # Set ticks for every hour
+plt.xticks(np.arange(0, 24, 1))  # ticks for every hour
 
 # Add legends and adjust layout
 axes[0].legend()
 plt.tight_layout()
 plt.show()
+
+# plot daily weather (averaged over all stations) for the two similar days
+fig, ax = plt.subplots(3, 1, figsize=(15, 15))
+day_data3 = df.groupby(['Date', 'Hour']).agg({'Temperature': 'mean', 'Dew Point': 'mean',
+                                        'Wind Speed': 'mean', 'Cloud Cover': 'mean'}).reset_index()
+print(dates_to_plot)
+for i, day in enumerate(dates_to_plot):
+    day_data2 = day_data3[day_data3['Date'] == day]
+    ax[0].plot(day_data2['Hour'], day_data2['Temperature'], label=f"Day {day}", color=colors[i], marker='o')
+    ax[1].plot(day_data2['Hour'], day_data2['Dew Point'], label=f"Day {day}", color=colors[i], marker='o')
+    ax[2].plot(day_data2['Hour'], day_data2['Wind Speed'], label=f"Day {day}", color=colors[i], marker='o')
+
+
+plt.show()
+
+days_data = df_measurements_tx.groupby(['Date', 'Hour']).agg({'Temperature': 'mean', 'Dew Point': 'mean', 'Wind Speed': 'mean', 'Cloud Cover': 'mean'}).reset_index()
+day1_data = days_data[days_data['Date'] == dates_to_plot[0]]
+day2_data = days_data[days_data['Date'] == dates_to_plot[18]]
+
+print(day1_data)
+print(day2_data)
+
+#match index of day1_data and day2_data
+day2_data = day2_data.reset_index(drop=True)
+
+print()
+# calculate mape of temperature, dewpoint, and wind speed together
+MAPE = (abs((day1_data[['Temperature', 'Dew Point', 'Wind Speed']]
+             - day2_data[['Temperature', 'Dew Point', 'Wind Speed']])
+            /day1_data[['Temperature', 'Dew Point', 'Wind Speed']])).mean() * 100
+
+
+print(MAPE)
