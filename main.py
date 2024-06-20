@@ -62,7 +62,7 @@ for file in files:
 
 
     command2 = 'SaveData("{}", AUX, TimePointWeather, "{}", [], )'
-    result_temp = #pw_object.GetParametersMultipleElement('TimePointWeather', var_list, '')
+    #pw_object.GetParametersMultipleElement('TimePointWeather', var_list, '')
     logger.info(f"{CheckResultForError(result_temp, 'Data saved successfully')}")
     data = result_temp[1]
     df_data = pd.DataFrame({f"Column{i + 1}": [x.strip() if x is not None else None for x in column] for i, column in

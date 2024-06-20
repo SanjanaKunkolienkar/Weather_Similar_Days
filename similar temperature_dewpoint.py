@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 header_stations = f"DATA (WeatherMeasurement,"
 header_measurements = f"DATA (TimePointWeather,"
 # Directory with all aux files
-common_path = "D:/Github_extras/Weather Aux By Years - Copy/"
+common_path = "D:/Github_extras/Weather Aux By Years/"
 # List of files in the directory
 files = os.listdir(common_path)
 
@@ -123,9 +123,11 @@ neighbors = NearestNeighbors(n_neighbors=10)
 neighbors.fit(pca_features)
 distances, indices = neighbors.kneighbors(pca_features)
 
-#output a list of indices and their corresponding dates
-ind_day = daily_vectors.iloc[indices[0]]['Date']
-ind_day.to_csv('D:/Github_extras/Texas_1940-2023/similar_days_indices_1950_2021.csv')
+#send indices to csv file
+similar_day_indices = pd.DataFrame(indices, index=daily_vectors['Date'])
+
+
+similar_day_indices.to_csv('D:/Github_extras/Texas_1940-2023/similar_days_indices_1950_2021.csv')
 # convert distance to dataframe and save to csv with indices
 distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5',
                                                                          'Day6', 'Day7', 'Day8', 'Day9', 'Day10'])
