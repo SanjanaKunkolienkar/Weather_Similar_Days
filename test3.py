@@ -127,15 +127,22 @@ print(daily_vectors.head(5))
 # Convert features into a proper 2D array
 features_matrix = np.stack(daily_vectors['Features'].values)
 
-pca = PCA(n_components=0.95)
+pca = PCA(n_components=0.7)
 pca_features = pca.fit_transform(features_matrix)
 
 # Nearest Neighbors for finding similar days
-neighbors = NearestNeighbors(n_neighbors=2)
+neighbors = NearestNeighbors(n_neighbors=10)
 neighbors.fit(pca_features)
 distances, indices = neighbors.kneighbors(pca_features)
 
-similar_days_indices = indices[0]  # gets day similar to day 1
+#output a list of indices and their corresponding dates
+ind_day = daily_vectors.iloc[indices[0]]['Date']
+ind_day.to_csv('D:/Github_extras/Texas_1940-2023/similar_days_indices_1977.csv')
+# convert distance to dataframe and save to csv with indices
+distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5', 'Day6', 'Day7', 'Day8', 'Day9', 'Day10'])
+distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1977.csv')
+
+similar_days_indices = indices[3]  # gets day similar to day 3
 dates_to_plot = daily_vectors.iloc[similar_days_indices]['Date']
 
 # Filtering DataFrame to include only the similar days
@@ -181,20 +188,27 @@ for i, day in enumerate(dates_to_plot):
 plt.show()
 
 days_data = df_measurements_tx.groupby(['Date', 'Hour']).agg({'Temperature': 'mean', 'Dew Point': 'mean', 'Wind Speed': 'mean', 'Cloud Cover': 'mean'}).reset_index()
-day1_data = days_data[days_data['Date'] == dates_to_plot[0]]
-day2_data = days_data[days_data['Date'] == dates_to_plot[18]]
-
+day1_data = days_data[days_data['Date'] == dates_to_plot[3]]
+day2_data = days_data[days_data['Date'] == dates_to_plot[39]] #18
+day3_data = days_data[days_data['Date'] == dates_to_plot[37]] #343 #10
 print(day1_data)
 print(day2_data)
-
+print(day3_data)
 #match index of day1_data and day2_data
+day1_data = day1_data.reset_index(drop=True)
 day2_data = day2_data.reset_index(drop=True)
+day3_data = day3_data.reset_index(drop=True)
 
 print()
 # calculate mape of temperature, dewpoint, and wind speed together
-MAPE = (abs((day1_data[['Temperature', 'Dew Point', 'Wind Speed']]
+MAPE1 = (abs((day1_data[['Temperature', 'Dew Point', 'Wind Speed']]
              - day2_data[['Temperature', 'Dew Point', 'Wind Speed']])
             /day1_data[['Temperature', 'Dew Point', 'Wind Speed']])).mean() * 100
+MAPE2 = (abs((day1_data[['Temperature', 'Dew Point', 'Wind Speed']]
+             - day3_data[['Temperature', 'Dew Point', 'Wind Speed']])
+            /day1_data[['Temperature', 'Dew Point', 'Wind Speed']])).mean() * 100
 
-
-print(MAPE)
+print("MAPE1: ")
+print(MAPE1)
+print("MAPE2: ")
+print(MAPE2)
