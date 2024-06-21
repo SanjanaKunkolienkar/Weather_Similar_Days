@@ -47,17 +47,19 @@ def get_data_from_aux():
     mean_weather_data = pd.read_csv(aux_file_path, index_col=0)
 
     mean_weather_data['DateTime'] = pd.to_datetime(mean_weather_data['DateTime'])
+    # convert date time to subtract 5 hours
+    mean_weather_data['Texas_DateTime'] = mean_weather_data['DateTime'] - pd.Timedelta(hours=5, minutes=30)
     # st.write(mean_weather_data.head())
     return mean_weather_data
 
 # def select_metrics_and_labels(option):
 
-def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metrics, y_labels, colors, col, texas_gen):
+def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metrics, y_labels, colors, col, texas_gen, selected_day):
 
     allopts = ['Temperature', 'Dew Point', 'Wind Speed', 'Cloud Cover']
 
     # split DateTime into Date and Hour for mean_weather_data
-    mean_weather_data[['Date', 'Hour']] = mean_weather_data['DateTime'].astype(str).str.split(' ', expand=True)
+    mean_weather_data[['Date', 'Hour']] = mean_weather_data['Texas_DateTime'].astype(str).str.split(' ', expand=True)
 
     # st.write('Mean Weather Data:')
     # st.write(mean_weather_data.head())
@@ -69,7 +71,17 @@ def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metric
     # st.write('Data to plot:')
     # st.write(data_to_plot.head())
     # get hour
-    data_to_plot['Hour'] = data_to_plot['DateTime'].dt.hour  # Extract hour for plotting
+    data_to_plot['Hour'] = data_to_plot['Texas_DateTime'].dt.hour  # Extract hour for plotting
+
+    mape= pd.DataFrame()
+    for din in similar_days:
+        temp_din = data_to_plot[data_to_plot['Date'] == din]
+        for metric in metrics:
+            mape[metric] = calculate_mape(temp_din[metric], mean_weather_data[mean_weather_data['Date'] == din][metric])
+
+    with st.sidebar:
+        st.write('Mean Absolute Percentage Error for each similar day:')
+        st.write(mape)
 
     my_bar.progress(25, text='Extracting information...')
 
@@ -109,7 +121,7 @@ def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metric
             fig.update_yaxes(title_text=y_label, row=i, col=1)
 
         # Only set x-axis title for the last subplot
-        fig.update_xaxes(title_text="Hour of the Day", row=len(metrics), col=1)
+        fig.update_xaxes(title_text="Hour of the Day (Texas)", row=len(metrics), col=1)
 
         # Streamlit app
         st.plotly_chart(fig)
@@ -147,9 +159,8 @@ def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metric
             # Update layout dynamically
             figa.update_layout(
                 title="Remaining weather profiles",
-                height=300 * len(metrics),  # Adjust height based on the number of subplots
+                height=200 * len(metrics),  # Adjust height based on the number of subplots
                 width=1000,
-                template="plotly_white"
             )
 
             # Set y-axis titles dynamically
@@ -165,42 +176,95 @@ def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metric
 
     # for each day in similar days, get the generation data: solar and wind
     gen = {}
-    figaa = make_subplots(rows=len(metrics), cols=1, shared_xaxes=False,
-                          subplot_titles=[f"{metric} Profiles" for metric in metrics])
 
-    col2 = st.columns((2, 2, 2, 2), gap='small')
-    i=0
-    with col[1]:
-        for _, d in enumerate(similar_days):
-            with col2[i]:
-                texas_gen['Date'] = pd.to_datetime(texas_gen['Date'])
-                solar_gen = texas_gen.loc[texas_gen['Date'] == d, '48 Gen MW Solar'].sum()
-                wind_gen = texas_gen.loc[texas_gen['Date'] == d, '48 Gen MW Wind'].sum()
-                gen[d] = {'Solar Generation': solar_gen, 'Wind Generation': wind_gen}
-                # st.write(f"Generation data for {d}: Solar Generation: {solar_gen} MW, Wind Generation: {wind_gen} MW")
+    #make_subplots(rows=2, cols=1, shared_xaxes=False)
 
-                figaa.add_trace(
-                    go.Pie(
-                        labels=list(gen[d].keys()),
-                        values=list(gen[d].values()),
-                        name=d
-                    )
-                )
+    col2 = st.columns((1, 1, 1, 1), gap='small')
+    j=0
 
-                # Update layout for better visualization
-                figaa.update_layout(
-                    title_text=d,
-                    annotations=[dict(text='Categories', x=0.5, y=0.5, font_size=20, showarrow=False)]
-                )
+    for _, d in enumerate(similar_days):
+        if d == selected_day:
+            i = 0 # so that selected day is plotted in first col always
+            title = d + ' (Selected Day)'
+        else:
+            j+=1
+            i = j
+            title = d
 
-                # Streamlit app
-                st.plotly_chart(figaa)
-                i+=1
+        with col2[i]:
+            texas_gen['Date'] = pd.to_datetime(texas_gen['Date'])
+            texas_gen['Hour'] = pd.to_datetime(texas_gen['Time']).dt.hour
+            solar_gen = texas_gen.loc[texas_gen['Date'] == d, '48 Gen MW Solar'].sum()
+            wind_gen = texas_gen.loc[texas_gen['Date'] == d, '48 Gen MW Wind'].sum()
+            gen[d] = {'Solar Generation': solar_gen, 'Wind Generation': wind_gen}
+            # st.write(f"Generation data for {d}: Solar Generation: {solar_gen} MW, Wind Generation: {wind_gen} MW")
+
+            figaa_pie = go.Figure()
+            figaa_pie.add_trace(
+                go.Pie(
+                    labels=list(gen[d].keys()),
+                    values=list(gen[d].values()),
+                    marker_colors =['EDD83D', '6AB547'], #FEA82F
+                ),
+            )
+
+            figaa_pie.update_layout(
+                title=title
+            )
+
+            # Streamlit app
+            st.plotly_chart(figaa_pie)
+
+    st.subheader('Comparing Renewable Generation')
+    i=0 #reset
+    j=0
+
+    val = 0
+    for _, day in enumerate(similar_days):
+        temp_df = texas_gen[texas_gen['Date'] == day]
+        maxi = temp_df[['48 Gen MW Solar', '48 Gen MW Wind']].max().max()
+        if val < maxi:
+            val = maxi
+
+    col3 = st.columns((1, 1, 1, 1), gap='small')
+    for _, day in enumerate(similar_days):
+        d = day
+        if d == selected_day:
+            i=0 # so that selected day is plotted in first col always
+            title = d + ' (Selected Day)'
+        else:
+            j=j+1
+            i=j
+            title = d
+
+        with col3[i]:
+            temp_df = texas_gen[texas_gen['Date'] == d]
+            figaa_bar = go.Figure()
+            figaa_bar.add_trace(go.Bar(
+                x=temp_df['Hour'],
+                y=temp_df['48 Gen MW Solar'],
+                name='Solar',
+                marker_color='#EDD83D'
+            ))
+            figaa_bar.add_trace(go.Bar(
+                x=temp_df['Hour'],
+                y=temp_df['48 Gen MW Wind'],
+                name='Wind',
+                marker_color='#6AB547'
+            ))
+            figaa_bar.update_layout(
+                title=title,
+                width=1000,
+                barmode='group',
+                yaxis_range=[0, val]
+            )
+            st.plotly_chart(figaa_bar)
 
 def calculate_mape(y_true, y_pred):
-    return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+    return (abs((y_true - y_pred) / y_true).mean()) * 100
 
 try:
+    st.header('Texas Weather and Power Flow Dashboard')
     with st.sidebar:
         option = st.selectbox(
             "Find similar days based on: ",
@@ -214,7 +278,7 @@ try:
             metrics = ['Temperature', 'Dew Point', 'Cloud Cover']
             y_labels = metrics
         elif option == 'temperature': #by temperature and dew point
-            metrics = ['Temperature', 'Dew Point']
+            metrics = ['Temperature']
             y_labels = metrics
         elif option == 'windspeed': #wind speed (not 100m)
             metrics = ['Wind Speed']
@@ -244,7 +308,12 @@ try:
 
     texas_gen = pd.read_csv(os.path.join(cwd, 'Weather Aux By Years/Texas_EIA2024Q1.csv'))
     texas_gen[['48 Gen MW Wind', '48 Gen MW Solar']] = texas_gen[['48 Gen MW Wind', '48 Gen MW Solar']].apply(pd.to_numeric, errors='coerce')
-    get_weather_for_similar_days(mean_weather_data, sim_days, my_bar, metrics, y_labels, colors, col, texas_gen)
+
+    get_weather_for_similar_days(mean_weather_data, sim_days, my_bar, metrics, y_labels, colors, col, texas_gen, date)
+
+    st.subheader('Power Flow Results')
+
+
 
 
 except Exception as e:
