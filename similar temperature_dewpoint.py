@@ -20,7 +20,7 @@ common_path = "D:/Github_extras/Weather Aux By Years/"
 # List of files in the directory
 files = os.listdir(common_path)
 
-all_years_cleaned_df = pd.DataFrame(columns = ['Station', 'Temperature', 'Dew Point', 'Wind Speed', 'Cloud Cover', 'Date', 'Hour', 'DateTime'])
+all_years_cleaned_df = pd.DataFrame(columns = ['Station', 'Temperature', 'Dew Point', 'Wind Speed', 'Cloud Cover', 'Region', 'Date', 'Hour', 'DateTime'])
 
 for file in files:
     file_path = os.path.join(common_path, file)
@@ -65,6 +65,9 @@ for file in files:
     df_stations_tx = df_stations[df_stations['Region'].str.contains('TX')]
     # filter measurements to only include the df_stations_tx in the 'WhoAmI' column
     df_measurements_tx = df_measurements[df_measurements['WhoAmI'].isin(df_stations_tx['Name'])]
+    # add 'Region' column to df_measurements_tx based on 'WhoAmI' column
+    df_measurements_tx['Region'] = df_measurements_tx['WhoAmI'].map(df_stations_tx.set_index('Name')['Region'])
+
     #separate the date and time from the 'UTCISO8601' column into 'Date' and 'Time' columns
     df_measurements_tx[['Date', 'Hour']] = df_measurements_tx['UTCISO8601'].str.split('T', expand=True)
 
@@ -74,6 +77,8 @@ for file in files:
     df_measurements_tx = df_measurements_tx.rename(columns={'WhoAmI': 'Station', 'TempF': 'Temperature', 'DewPointF': 'Dew Point',
                                                         'WindSpeedmph': 'Wind Speed',
                                                         'CloudCoverPerc': 'Cloud Cover'})
+
+
     df_measurements_tx = df_measurements_tx.drop(columns=['UTCISO8601', 'WindDirection'])
     df_measurements_tx = df_measurements_tx.reset_index(drop=True)
 
@@ -93,9 +98,13 @@ for file in files:
     print(all_years_cleaned_df.shape)
 
 df = all_years_cleaned_df.reset_index(drop=True)
+
+mean_df = df.groupby('DateTime').agg({'Temperature': 'mean', 'Dew Point': 'mean', 'Wind Speed': 'mean', 'Cloud Cover': 'mean'}).reset_index()
+mean_df.to_csv('D:/Github_extras/Texas_1940-2023/mean_weather_data_1950_2021_by_windspeed.csv')
+
 # Scale the data for PCA
 scaler = StandardScaler()
-numeric_columns = ['Temperature', 'Dew Point', 'Wind Speed']
+numeric_columns = ['Cloud Cover']#, 'Wind Speed']
 df[numeric_columns] = scaler.fit_transform(df[numeric_columns])
 
 # Reshape data: each row is a day with all hourly readings flattened into a single vector
@@ -119,7 +128,7 @@ pca = PCA(n_components=0.7) # get components till 70% of variance is represented
 pca_features = pca.fit_transform(features_matrix)
 
 # Nearest Neighbors for finding similar days
-neighbors = NearestNeighbors(n_neighbors=10)
+neighbors = NearestNeighbors(n_neighbors=20)
 neighbors.fit(pca_features)
 distances, indices = neighbors.kneighbors(pca_features)
 
@@ -127,12 +136,14 @@ distances, indices = neighbors.kneighbors(pca_features)
 similar_day_indices = pd.DataFrame(indices, index=daily_vectors['Date'])
 
 
-similar_day_indices.to_csv('D:/Github_extras/Texas_1940-2023/similar_days_indices_1950_2021.csv')
+similar_day_indices.to_csv('D:/Github_extras/Texas_1940-2023/similar_days_indices_1950_2021_by_cloudcover.csv')
 # convert distance to dataframe and save to csv with indices
 distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5',
-                                                                         'Day6', 'Day7', 'Day8', 'Day9', 'Day10'])
+                                                                         'Day6', 'Day7', 'Day8', 'Day9', 'Day10', 'Day11',
+                                                                             'Day12', 'Day13', 'Day14', 'Day15', 'Day16', 'Day17',
+                                                                             'Day18', 'Day19', 'Day20'])
 
-distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1950_2021.csv')
+distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1950_2021_by_cloudcover.csv')
 
 #     similar_days_indices = indices[0]  # gets day similar to day 1
 #     dates_to_plot = daily_vectors.iloc[similar_days_indices]['Date']
