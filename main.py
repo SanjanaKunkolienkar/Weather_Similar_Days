@@ -40,7 +40,7 @@ logger.info(f"{CheckResultForError(result, 'Solved Power Flow')}")
 # get a list of files in the pww_filepath directory
 files = os.listdir(pww_filepath)
 
-var_list = ['UTCISO8601','WhoAmI','TempF','DewPointF','WindSpeedmph','WindDirection','CloudCoverPerc']
+var_list = ['UTCISO8601', 'WhoAmI', 'TempF', 'DewPointF', 'WindSpeedmph', 'WindDirection', 'CloudCoverPerc']
 # for i in range(1, 24):
 #     var_list.append(f'TimeDomainWeatherSummary:{i}')
 
@@ -63,8 +63,8 @@ for file in files:
 
     command2 = 'SaveData("{}", AUX, TimePointWeather, "{}", [], )'
     #pw_object.GetParametersMultipleElement('TimePointWeather', var_list, '')
-    logger.info(f"{CheckResultForError(result_temp, 'Data saved successfully')}")
-    data = result_temp[1]
+    logger.info(f"{CheckResultForError(result_timestep, 'Data saved successfully')}")
+    data = result_timestep[1]
     df_data = pd.DataFrame({f"Column{i + 1}": [x.strip() if x is not None else None for x in column] for i, column in
                           enumerate(data)})
     # df_data.columns = ['Date', 'TempAvg', 'TempMin', 'TempMax', 'DewPointAvg', 'DewPointMin', 'DewPointMax',

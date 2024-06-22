@@ -1,12 +1,11 @@
 import pandas as pd
 import os
+import win32com.client
 import streamlit as st
-import matplotlib.pyplot as plt
-import numpy as np
 import altair as alt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import plotly.express as px
+import powerworld_functions as pwf
 
 st.set_page_config(
     page_title="Texas Weather Dashboard",
@@ -52,8 +51,6 @@ def get_data_from_aux():
     # st.write(mean_weather_data.head())
     return mean_weather_data
 
-# def select_metrics_and_labels(option):
-
 def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metrics, y_labels, colors, col, texas_gen, selected_day):
 
     allopts = ['Temperature', 'Dew Point', 'Wind Speed', 'Cloud Cover']
@@ -74,16 +71,20 @@ def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metric
     data_to_plot['Hour'] = data_to_plot['Texas_DateTime'].dt.hour  # Extract hour for plotting
 
     mape= pd.DataFrame()
+    temp_din = data_to_plot[data_to_plot['Date'] == selected_day]
+    temp_din.reset_index(inplace=True)
     for din in similar_days:
-        temp_din = data_to_plot[data_to_plot['Date'] == din]
-        for metric in metrics:
-            mape[metric] = calculate_mape(temp_din[metric], mean_weather_data[mean_weather_data['Date'] == din][metric])
+        predicted = mean_weather_data[mean_weather_data['Date'] == din]
+        predicted.reset_index(inplace=True)
+        if din != selected_day:
+            for metric in metrics:
+                mape.loc[metric, din] = calculate_mape(temp_din[metric], predicted[metric])
 
     with st.sidebar:
         st.write('Mean Absolute Percentage Error for each similar day:')
         st.write(mape)
 
-    my_bar.progress(25, text='Extracting information...')
+    my_bar.progress(5, text='Extracting information...')
 
     with col[0]:
         st.subheader('Weather Profiles for Similar Days')
@@ -126,7 +127,7 @@ def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metric
         # Streamlit app
         st.plotly_chart(fig)
 
-    my_bar.progress(100, text='Weather data loaded successfully!')
+    my_bar.progress(20, text='Weather data loaded successfully!')
 
     if option != 'All 5 measurements':
         with col[1]:
@@ -304,6 +305,7 @@ try:
     col = st.columns((5, 5), gap='small')
 
     sim_days = display_similar_days(df, indices, date, col)
+    day_to_analyse = [din for _, din in enumerate(sim_days)]
     mean_weather_data = get_data_from_aux()
 
     texas_gen = pd.read_csv(os.path.join(cwd, 'Weather Aux By Years/Texas_EIA2024Q1.csv'))
@@ -313,8 +315,10 @@ try:
 
     st.subheader('Power Flow Results')
 
-
-
+    st.session_state.powerflow_day = st.selectbox('Select a day for power flow analysis: ', day_to_analyse)
+    if st.button('Run Power Flow Analysis'):
+        pwf.main(st.session_state.powerflow_day, my_bar)
+        st.write('Ran power flow for ', st.session_state.powerflow_day)
 
 except Exception as e:
     st.error(f" ***  An error occurred: {e} ***")
