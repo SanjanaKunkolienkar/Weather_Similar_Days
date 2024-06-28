@@ -23,77 +23,191 @@ try:
     pw_object = win32com.client.Dispatch("pwrworld.SimulatorAuto")
 except Exception as e:
     print(f"Error connecting to PowerWorld: {e}")
-####### Defining common elements #######
-# Define the search header
-header_stations = f"DATA (WeatherMeasurement,"
-header_measurements = f"DATA (TimePointWeather,"
-# Directory with all aux files
-common_path = "D:/Github_extras/Texas_1940-2023/Texas_ByTwoYears/"
+
+# Directory with all csv files
+common_path = "C:/Users/sanja/OneDrive - Texas A&M University/csv_files/"
+station_path = 'D:/Github/Weather_Similar_Days/station.csv'
+stations = pd.read_csv(station_path)
+stations.columns = ['WhoAmI', 'Latitude', 'Longitude', 'ElevationMeters', 'ICAO', 'WMO', 'Region', 'Country2']
+stations = stations[1:]
+# delete nan values
+stations = stations.dropna(subset=['Region'])
+stations['WhoAmI'] = stations['WhoAmI'].astype(str)
+stations = stations[stations['Region'].str.contains('TX')]
+stations_list_TX = stations['WhoAmI'].tolist()
+
 # List of files in the directory
 files = os.listdir(common_path)
-init_source1 = 'D:/Github_extras/Texas_1940-2023/Texas_1940_1941.pww'
-source1 = init_source1
+tx_files = os.listdir('D:/Github_extras/Texas Weather/')
+all_data = pd.DataFrame()
+col = ['UTCISO8601','WhoAmI','DewPointF','tempF','GlobalHorizontalIrradianceWM2','CloudCoverPerc','DirectHorizontalIrradianceWM2','WindSpeedmph','WindDirection','WindSpeed100mph']
 for file in files:
-    print(file)
-    dest = os.path.join(common_path, 'Texas_1940_2023.pww')
-    source2 = os.path.join(common_path, file)
-    r = pw_object.RunScriptCommand(f'WeatherPWWFileCombine2(\"{source1}\", \"{source2}\", \"{dest}\");')
+    if file.endswith('.csv'):
+        print(file)
+        if any(file[:-4] in x for x in tx_files):
+            filepath = os.path.join('D:/Github_extras/Texas Weather/', f'{file[:-4]}_TX.csv')
+            print(filepath)
+            data = pd.read_csv(filepath)
+            # delete first columns and rename columns
+            data = data.drop(columns=['Unnamed: 0'])
+            data.columns = col
 
-    source1 = dest
+            # convert 'WhoAmI' column to string type
+            data['WhoAmI'] = data['WhoAmI'].astype(str)
+        else:
+            filepath = os.path.join(common_path, file)
+            print(filepath)
+            data = pd.read_csv(filepath)
+            #delete first columns and rename columns
+            data = data.drop(columns=['Unnamed: 0'])
+            data.columns = col
+
+            # convert 'WhoAmI' column to string type
+            data['WhoAmI'] = data['WhoAmI'].astype(str)
+            # replace the nan values in UTCISO8601 with the previous value
+            data['UTCISO8601'] = data['UTCISO8601'].fillna(method='ffill')
+            # filter data to include stations in stations_list_TX
+            data = data[data['WhoAmI'].isin(stations_list_TX)]
+
+            data.reset_index(drop=True, inplace=True)
+
+            data.to_csv('D:/Github_extras/Texas Weather/' + file[:-4] + '_TX.csv')
+
+        all_data = pd.concat([all_data, data], axis=0)
+
+all_data.reset_index(drop=True, inplace=True)
+all_data.to_csv('D:/Github_extras/All_Weather_TX.csv')
+
+col = ['UTCISO8601', 'WhoAmI', 'DewPointF', 'tempF', 'GlobalHorizontalIrradianceWM2', 'CloudCoverPerc', 'DirectHorizontalIrradianceWM2', 'WindSpeedmph', 'WindDirection', 'WindSpeed100mph']
+all_data.columns = ['UTCISO8601', 'WhoAmI', 'Dew Point', 'Temperature', 'Global Horizontal Irradiance', 'Cloud Cover', 'Direct Horizontal Irradiance', 'Wind Speed', 'Wind Direction', 'Wind Speed 100']
+all_data[['Dew Point', 'Temperature', 'Global Horizontal Irradiance', 'Cloud Cover', 'Direct Horizontal Irradiance', 'Wind Speed', 'Wind Direction', 'Wind Speed 100']] = all_data[['Dew Point', 'Temperature', 'Global Horizontal Irradiance', 'Cloud Cover', 'Direct Horizontal Irradiance', 'Wind Speed', 'Wind Direction', 'Wind Speed 100']].apply(pd.to_numeric, errors='coerce')
+all_data[['Date', 'Hour']] = pd.to_datetime(all_data['UTCISO8601'].str.split('T', expand=True))
+
+mean_all_data = all_data.groupby('Date').agg({'Temperature': 'mean', 'Dew Point': 'mean',
+                                              'Wind Speed': 'mean', 'Cloud Cover': 'mean',
+                                              'Global Horizontal Irradiance': 'mean', 'Direct Horizontal Irradiance': 'mean',
+                                              'Wind Speed 100': 'mean'}).reset_index()
+mean_all_data.to_csv('D:/Github_extras/mean_weather_data_1950_2023.csv')
+
+df_temp_dp = all_data[['UTCISO8601', 'Date', 'Time', 'WhoAmI', 'Temperature', 'Dew Point']]
+df_wind = all_data[['UTCISO8601', 'Date', 'Time', 'WhoAmI', 'Wind Speed', 'Wind Speed 100']]
+df_sun = all_data[['UTCISO8601', 'Date', 'Time', 'WhoAmI', 'Global Horizontal Irradiance', 'Direct Horizontal Irradiance', 'Cloud Cover']]
+
+# calculate days for temperature and dewpoint
+current_df = df_temp_dp
+scaler = StandardScaler()
+numeric_columns = ['Temperature', 'Dew Point']
+current_df[numeric_columns] = scaler.fit_transform(current_df[numeric_columns])
+
+# Reshape data: each row is a day with all hourly readings flattened into a single vector
+daily_vectors = current_df.groupby('Date')[numeric_columns].apply(lambda g: np.ravel(g.values)).reset_index()
+daily_vectors.columns = ['Date', 'Features']
+
+# Find the maximum length
+max_length = max(len(arr) for arr in daily_vectors['Features'].values)
+print("Max Length: ", max_length)
+
+# Pad each array to the maximum length
+padded_features = [np.pad(arr, (0, max_length - len(arr)), mode='constant') for arr in daily_vectors['Features'].values]
+
+# Convert to a 2D array
+features_matrix = np.stack(padded_features)
+pca = PCA(n_components=0.7) # get components till 70% of variance is represented (#TODO: try changing this to check effect on MAPE)
+pca_features = pca.fit_transform(features_matrix)
+
+# Nearest Neighbors for finding similar days
+neighbors = NearestNeighbors(n_neighbors=20)
+neighbors.fit(pca_features)
+distances, indices = neighbors.kneighbors(pca_features)
+
+#send indices to csv file
+similar_day_indices = pd.DataFrame(indices, index=daily_vectors['Date'])
+similar_day_indices.to_csv('D:/Github_extras/similar_days_indices_1950_2023_by_temp_and_dewpoint.csv')
+# convert distance to dataframe and save to csv with indices
+distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5',
+                                                                         'Day6', 'Day7', 'Day8', 'Day9', 'Day10', 'Day11',
+                                                                             'Day12', 'Day13', 'Day14', 'Day15', 'Day16', 'Day17',
+                                                                             'Day18', 'Day19', 'Day20'])
+distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1950_2021_by_temp_and_dewpoint.csv')
+
+# calculate days for wind speed
+current_df = df_wind
+scaler = StandardScaler()
+numeric_columns = ['Wind Speed', 'Wind Speed 100']
+current_df[numeric_columns] = scaler.fit_transform(current_df[numeric_columns])
+
+# Reshape data: each row is a day with all hourly readings flattened into a single vector
+daily_vectors = current_df.groupby('Date')[numeric_columns].apply(lambda g: np.ravel(g.values)).reset_index()
+daily_vectors.columns = ['Date', 'Features']
+
+# Find the maximum length
+max_length = max(len(arr) for arr in daily_vectors['Features'].values)
+print("Max Length: ", max_length)
+
+# Pad each array to the maximum length
+padded_features = [np.pad(arr, (0, max_length - len(arr)), mode='constant') for arr in daily_vectors['Features'].values]
+
+# Convert to a 2D array
+features_matrix = np.stack(padded_features)
+pca = PCA(n_components=0.7) # get components till 70% of variance is represented (#TODO: try changing this to check effect on MAPE)
+pca_features = pca.fit_transform(features_matrix)
+
+# Nearest Neighbors for finding similar days
+neighbors = NearestNeighbors(n_neighbors=20)
+neighbors.fit(pca_features)
+distances, indices = neighbors.kneighbors(pca_features)
+
+#send indices to csv file
+similar_day_indices = pd.DataFrame(indices, index=daily_vectors['Date'])
+similar_day_indices.to_csv('D:/Github_extras/similar_days_indices_1950_2023_by_wind.csv')
+# convert distance to dataframe and save to csv with indices
+distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5',
+                                                                            'Day6', 'Day7', 'Day8', 'Day9', 'Day10', 'Day11',
+                                                                                'Day12', 'Day13', 'Day14', 'Day15', 'Day16', 'Day17',
+                                                                                'Day18', 'Day19', 'Day20'])
+distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1950_2021_by_wind.csv')
+
+# calculate days for sun
+current_df = df_sun
+scaler = StandardScaler()
+numeric_columns = ['Global Horizontal Irradiance', 'Direct Horizontal Irradiance', 'Cloud Cover']
+
+current_df[numeric_columns] = scaler.fit_transform(current_df[numeric_columns])
+
+# Reshape data: each row is a day with all hourly readings flattened into a single vector
+daily_vectors = current_df.groupby('Date')[numeric_columns].apply(lambda g: np.ravel(g.values)).reset_index()
+daily_vectors.columns = ['Date', 'Features']
+
+# Find the maximum length
+max_length = max(len(arr) for arr in daily_vectors['Features'].values)
+print("Max Length: ", max_length)
+
+# Pad each array to the maximum length
+padded_features = [np.pad(arr, (0, max_length - len(arr)), mode='constant') for arr in daily_vectors['Features'].values]
+
+# Convert to a 2D array
+features_matrix = np.stack(padded_features)
+pca = PCA(n_components=0.7) # get components till 70% of variance is represented (#TODO: try changing this to check effect on MAPE)
+pca_features = pca.fit_transform(features_matrix)
+
+# Nearest Neighbors for finding similar days
+neighbors = NearestNeighbors(n_neighbors=20)
+neighbors.fit(pca_features)
+distances, indices = neighbors.kneighbors(pca_features)
+
+#send indices to csv file
+similar_day_indices = pd.DataFrame(indices, index=daily_vectors['Date'])
+similar_day_indices.to_csv('D:/Github_extras/similar_days_indices_1950_2023_by_sun.csv')
+# convert distance to dataframe and save to csv with indices
+distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5',
+                                                                            'Day6', 'Day7', 'Day8', 'Day9', 'Day10', 'Day11',
+                                                                                'Day12', 'Day13', 'Day14', 'Day15', 'Day16', 'Day17',
+                                                                                'Day18', 'Day19', 'Day20'])
+distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1950_2021_by_sun.csv')
 
 
 
 
-
-
-# all_years_cleaned_df = pd.DataFrame(columns = ['Station', 'Temperature', 'Dew Point', 'Wind Speed', 'Cloud Cover', 'Region', 'Date', 'Hour', 'DateTime'])
-#
-# for file in files:
-#     file_path = os.path.join(common_path, file)
-#     print(file_path)
-#     with open(file_path, 'r') as file:
-#         data = file.read()
-#
-#     # Find the header and then the curly braces following it
-#     start_index_stations = data.find(header_stations)
-#     start_index_measurements = data.find(header_measurements)
-#
-#     # read station information
-#     if start_index_stations == -1:
-#         print("Header for Stations not found")
-#     else:
-#         # Find the next occurrence of { and } after the header
-#         start_station = data.find('{', start_index_stations) + 1
-#         end_station = data.find('}', start_station)
-#         data_block_stations = data[start_station:end_station].strip()
-#         # Split the extracted string into lines and remove quotes
-#         data_lines_stations = data_block_stations.split('\n')
-#         cleaned_lines_stations  = [line.replace('"', '').strip().split() for line in data_lines_stations if line.strip()]
-#         # Load the cleaned lines into a DataFrame
-#         df_stations = pd.DataFrame(cleaned_lines_stations, columns=['Name','Latitude','Longitude','ElevationMeters','ICAO','WMO','Country2','Region'])
-#
-#     # read actual measurements for time points
-#     if start_index_measurements == -1:
-#         print("Header for Stations not found")
-#     else:
-#         # Find the next occurrence of { and } after the header
-#         start_station = data.find('{', start_index_measurements) + 1
-#         end_station = data.find('}', start_station)
-#         data_block_measurements = data[start_station:end_station].strip()
-#         # Split the extracted string into lines and remove quotes
-#         data_lines_measurements = data_block_measurements.split('\n')
-#         cleaned_lines_measurements  = [line.replace('"', '').strip().split() for line in data_lines_measurements if line.strip()]
-#         # Load the cleaned lines into a DataFrame
-#         df_measurements = pd.DataFrame(cleaned_lines_measurements, columns=['UTCISO8601','WhoAmI','TempF','DewPointF',
-#                                                                             'WindSpeedmph','WindDirection','CloudCoverPerc'])
-#
-#     # filter stations to only include the ones with 'TX' in the 'Region' column
-#     df_stations_tx = df_stations[df_stations['Region'].str.contains('TX')]
-#     # filter measurements to only include the df_stations_tx in the 'WhoAmI' column
-#     df_measurements_tx = df_measurements[df_measurements['WhoAmI'].isin(df_stations_tx['Name'])]
-#     # add 'Region' column to df_measurements_tx based on 'WhoAmI' column
-#     df_measurements_tx['Region'] = df_measurements_tx['WhoAmI'].map(df_stations_tx.set_index('Name')['Region'])
-#
 #     #separate the date and time from the 'UTCISO8601' column into 'Date' and 'Time' columns
 #     df_measurements_tx[['Date', 'Hour']] = df_measurements_tx['UTCISO8601'].str.split('T', expand=True)
 #

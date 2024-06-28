@@ -40,9 +40,9 @@ logger.info(f"{CheckResultForError(result, 'Solved Power Flow')}")
 # get a list of files in the pww_filepath directory
 files = os.listdir(pww_filepath)
 
-var_list = ['UTCISO8601', 'WhoAmI', 'TempF', 'DewPointF', 'WindSpeedmph', 'WindDirection', 'CloudCoverPerc']
+var_list = ['TimeDomainDateTimeUTC', 'WhoAmI', 'WeatherValue']
 # for i in range(1, 24):
-#     var_list.append(f'TimeDomainWeatherSummary:{i}')
+#     var_list.append(f'WeatherValue:{i}')
 
 # df_results = pd.DataFrame(columns = ['Date', 'TempAvg', 'TempMin', 'TempMax', 'DewPointAvg', 'DewPointMin', 'DewPointMax',
 #                   'WindSpeedAvg', 'WindSpeedMin', 'WindSpeedMax', 'WindDirAvg', 'WindDirMin', 'WindDirMax',

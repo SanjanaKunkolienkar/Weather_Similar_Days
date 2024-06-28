@@ -19,5 +19,4 @@ except Exception as e:
 
 result = pw_object.RunScriptCommand('NewCase;')
 print(f"{CheckResultForError(result, 'New Case created')}")
-command = 'TimeStepSaveResultsByTypeCSV(ObjectType, "FileCSVName");'
-result = pw_object.RunScriptCommand(command)
+

@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded")
 
-alt.themes.enable("dark")
+#alt.themes.enable("dark")
 cwd = os.getcwd() # streamlit only uses 'relative to root' paths
 
 def get_data(filemetric):
