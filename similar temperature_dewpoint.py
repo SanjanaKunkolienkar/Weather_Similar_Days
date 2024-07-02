@@ -25,7 +25,7 @@ except Exception as e:
     print(f"Error connecting to PowerWorld: {e}")
 
 # Directory with all csv files
-common_path = "C:/Users/sanja/OneDrive - Texas A&M University/csv_files/"
+common_path = "C:/Users/sanjanakunkolienkar/OneDrive - Texas A&M University/csv_files/"
 station_path = 'D:/Github/Weather_Similar_Days/station.csv'
 stations = pd.read_csv(station_path)
 stations.columns = ['WhoAmI', 'Latitude', 'Longitude', 'ElevationMeters', 'ICAO', 'WMO', 'Region', 'Country2']
@@ -41,171 +41,191 @@ files = os.listdir(common_path)
 tx_files = os.listdir('D:/Github_extras/Texas Weather/')
 all_data = pd.DataFrame()
 col = ['UTCISO8601','WhoAmI','DewPointF','tempF','GlobalHorizontalIrradianceWM2','CloudCoverPerc','DirectHorizontalIrradianceWM2','WindSpeedmph','WindDirection','WindSpeed100mph']
-for file in files:
-    if file.endswith('.csv'):
-        print(file)
-        if any(file[:-4] in x for x in tx_files):
-            filepath = os.path.join('D:/Github_extras/Texas Weather/', f'{file[:-4]}_TX.csv')
-            print(filepath)
-            data = pd.read_csv(filepath)
-            # delete first columns and rename columns
-            data = data.drop(columns=['Unnamed: 0'])
-            data.columns = col
+# for file in files:
+#     try:
+#         if file.endswith('.csv'):
+#             print(file)
+#             if any(file[:-4] in x for x in tx_files):
+#                 filepath = os.path.join('D:/Github_extras/Texas Weather/', f'{file[:-4]}_TX.csv')
+#                 print(filepath)
+#                 data = pd.read_csv(filepath)
+#                 # delete first columns and rename columns
+#                 data = data.drop(columns=['Unnamed: 0'])
+#                 data.columns = col
+#
+#                 # convert 'WhoAmI' column to string type
+#                 data['WhoAmI'] = data['WhoAmI'].astype(str)
+#             else:
+#                 filepath = os.path.join(common_path, file)
+#                 print(filepath)
+#                 data = pd.read_csv(filepath)
+#                 #delete first columns and rename columns
+#                 data = data.drop(columns=['Unnamed: 0'])
+#                 data.columns = col
+#
+#                 # convert 'WhoAmI' column to string type
+#                 data['WhoAmI'] = data['WhoAmI'].astype(str)
+#                 # replace the nan values in UTCISO8601 with the previous value
+#                 data['UTCISO8601'] = data['UTCISO8601'].fillna(method='ffill')
+#                 # filter data to include stations in stations_list_TX
+#                 data = data[data['WhoAmI'].isin(stations_list_TX)]
+#
+#                 data.reset_index(drop=True, inplace=True)
+#
+#                 data.to_csv('D:/Github_extras/Texas Weather/' + file[:-4] + '_TX.csv')
+#
+#             all_data = pd.concat([all_data, data], axis=0)
+#     except Exception as e:
+#         all_data.to_csv('D:/Github_extras/All_Weather_TX_error.csv')
 
-            # convert 'WhoAmI' column to string type
-            data['WhoAmI'] = data['WhoAmI'].astype(str)
-        else:
-            filepath = os.path.join(common_path, file)
-            print(filepath)
-            data = pd.read_csv(filepath)
-            #delete first columns and rename columns
-            data = data.drop(columns=['Unnamed: 0'])
-            data.columns = col
+# all_data = pd.read_csv('D:/Github_extras/All_Weather_TX_error.csv')
+# all_data = all_data.drop(columns=['Unnamed: 0'])
+# print(all_data.size)
+# all_data.reset_index(drop=True, inplace=True)
+#
+# col = ['UTCISO8601', 'WhoAmI', 'DewPointF', 'tempF', 'GlobalHorizontalIrradianceWM2', 'CloudCoverPerc', 'DirectHorizontalIrradianceWM2', 'WindSpeedmph', 'WindDirection', 'WindSpeed100mph']
+# all_data.columns = ['UTCISO8601', 'WhoAmI', 'Dew Point', 'Temperature', 'Global Horizontal Irradiance', 'Cloud Cover', 'Direct Horizontal Irradiance', 'Wind Speed', 'Wind Direction', 'Wind Speed 100']
+# all_data[['Dew Point', 'Temperature', 'Global Horizontal Irradiance', 'Cloud Cover', 'Direct Horizontal Irradiance', 'Wind Speed', 'Wind Direction', 'Wind Speed 100']] = all_data[['Dew Point', 'Temperature', 'Global Horizontal Irradiance', 'Cloud Cover', 'Direct Horizontal Irradiance', 'Wind Speed', 'Wind Direction', 'Wind Speed 100']].apply(pd.to_numeric, errors='coerce')
+# # Split the 'UTCISO8601' column into date and time
+# all_data[['Date', 'Time']] = all_data['UTCISO8601'].str.split('T', expand=True)
+# # Remove any timezone information from the time part (if present)
+# all_data['Time'] = all_data['Time'].str.replace('Z', '')
+# # Convert 'Date' and 'Time' columns to appropriate datetime formats
+# all_data['Date'] = pd.to_datetime(all_data['Date'], format="%Y-%m-%d")
+# all_data['Time'] = pd.to_datetime(all_data['Time'], format="%H:%M:%S.%f").dt.time
+#
+# # If you want to keep only the hour part, you can do:
+# all_data['Hour'] = all_data['Time'].apply(lambda x: x.hour)
+#
+# all_data.to_csv('D:/Github_extras/All_Weather_TX_cleaned.csv')
 
-            # convert 'WhoAmI' column to string type
-            data['WhoAmI'] = data['WhoAmI'].astype(str)
-            # replace the nan values in UTCISO8601 with the previous value
-            data['UTCISO8601'] = data['UTCISO8601'].fillna(method='ffill')
-            # filter data to include stations in stations_list_TX
-            data = data[data['WhoAmI'].isin(stations_list_TX)]
-
-            data.reset_index(drop=True, inplace=True)
-
-            data.to_csv('D:/Github_extras/Texas Weather/' + file[:-4] + '_TX.csv')
-
-        all_data = pd.concat([all_data, data], axis=0)
-
-all_data.reset_index(drop=True, inplace=True)
-all_data.to_csv('D:/Github_extras/All_Weather_TX.csv')
-
-col = ['UTCISO8601', 'WhoAmI', 'DewPointF', 'tempF', 'GlobalHorizontalIrradianceWM2', 'CloudCoverPerc', 'DirectHorizontalIrradianceWM2', 'WindSpeedmph', 'WindDirection', 'WindSpeed100mph']
-all_data.columns = ['UTCISO8601', 'WhoAmI', 'Dew Point', 'Temperature', 'Global Horizontal Irradiance', 'Cloud Cover', 'Direct Horizontal Irradiance', 'Wind Speed', 'Wind Direction', 'Wind Speed 100']
-all_data[['Dew Point', 'Temperature', 'Global Horizontal Irradiance', 'Cloud Cover', 'Direct Horizontal Irradiance', 'Wind Speed', 'Wind Direction', 'Wind Speed 100']] = all_data[['Dew Point', 'Temperature', 'Global Horizontal Irradiance', 'Cloud Cover', 'Direct Horizontal Irradiance', 'Wind Speed', 'Wind Direction', 'Wind Speed 100']].apply(pd.to_numeric, errors='coerce')
-all_data[['Date', 'Hour']] = pd.to_datetime(all_data['UTCISO8601'].str.split('T', expand=True))
-
-mean_all_data = all_data.groupby('Date').agg({'Temperature': 'mean', 'Dew Point': 'mean',
+all_data_re = pd.read_csv('D:/Github_extras/All_Weather_TX_cleaned.csv')
+all_data_re = all_data_re.drop(columns=['Unnamed: 0'])
+print(all_data_re.size)
+all_data_re.reset_index(drop=True, inplace=True)
+mean_all_data = all_data_re.groupby([all_data_re['Date'], 'Hour', 'UTCISO8601']).agg({'Temperature': 'mean', 'Dew Point': 'mean',
                                               'Wind Speed': 'mean', 'Cloud Cover': 'mean',
                                               'Global Horizontal Irradiance': 'mean', 'Direct Horizontal Irradiance': 'mean',
                                               'Wind Speed 100': 'mean'}).reset_index()
 mean_all_data.to_csv('D:/Github_extras/mean_weather_data_1950_2023.csv')
 
-df_temp_dp = all_data[['UTCISO8601', 'Date', 'Time', 'WhoAmI', 'Temperature', 'Dew Point']]
-df_wind = all_data[['UTCISO8601', 'Date', 'Time', 'WhoAmI', 'Wind Speed', 'Wind Speed 100']]
-df_sun = all_data[['UTCISO8601', 'Date', 'Time', 'WhoAmI', 'Global Horizontal Irradiance', 'Direct Horizontal Irradiance', 'Cloud Cover']]
-
-# calculate days for temperature and dewpoint
-current_df = df_temp_dp
-scaler = StandardScaler()
-numeric_columns = ['Temperature', 'Dew Point']
-current_df[numeric_columns] = scaler.fit_transform(current_df[numeric_columns])
-
-# Reshape data: each row is a day with all hourly readings flattened into a single vector
-daily_vectors = current_df.groupby('Date')[numeric_columns].apply(lambda g: np.ravel(g.values)).reset_index()
-daily_vectors.columns = ['Date', 'Features']
-
-# Find the maximum length
-max_length = max(len(arr) for arr in daily_vectors['Features'].values)
-print("Max Length: ", max_length)
-
-# Pad each array to the maximum length
-padded_features = [np.pad(arr, (0, max_length - len(arr)), mode='constant') for arr in daily_vectors['Features'].values]
-
-# Convert to a 2D array
-features_matrix = np.stack(padded_features)
-pca = PCA(n_components=0.7) # get components till 70% of variance is represented (#TODO: try changing this to check effect on MAPE)
-pca_features = pca.fit_transform(features_matrix)
-
-# Nearest Neighbors for finding similar days
-neighbors = NearestNeighbors(n_neighbors=20)
-neighbors.fit(pca_features)
-distances, indices = neighbors.kneighbors(pca_features)
-
-#send indices to csv file
-similar_day_indices = pd.DataFrame(indices, index=daily_vectors['Date'])
-similar_day_indices.to_csv('D:/Github_extras/similar_days_indices_1950_2023_by_temp_and_dewpoint.csv')
-# convert distance to dataframe and save to csv with indices
-distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5',
-                                                                         'Day6', 'Day7', 'Day8', 'Day9', 'Day10', 'Day11',
-                                                                             'Day12', 'Day13', 'Day14', 'Day15', 'Day16', 'Day17',
-                                                                             'Day18', 'Day19', 'Day20'])
-distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1950_2021_by_temp_and_dewpoint.csv')
-
-# calculate days for wind speed
-current_df = df_wind
-scaler = StandardScaler()
-numeric_columns = ['Wind Speed', 'Wind Speed 100']
-current_df[numeric_columns] = scaler.fit_transform(current_df[numeric_columns])
-
-# Reshape data: each row is a day with all hourly readings flattened into a single vector
-daily_vectors = current_df.groupby('Date')[numeric_columns].apply(lambda g: np.ravel(g.values)).reset_index()
-daily_vectors.columns = ['Date', 'Features']
-
-# Find the maximum length
-max_length = max(len(arr) for arr in daily_vectors['Features'].values)
-print("Max Length: ", max_length)
-
-# Pad each array to the maximum length
-padded_features = [np.pad(arr, (0, max_length - len(arr)), mode='constant') for arr in daily_vectors['Features'].values]
-
-# Convert to a 2D array
-features_matrix = np.stack(padded_features)
-pca = PCA(n_components=0.7) # get components till 70% of variance is represented (#TODO: try changing this to check effect on MAPE)
-pca_features = pca.fit_transform(features_matrix)
-
-# Nearest Neighbors for finding similar days
-neighbors = NearestNeighbors(n_neighbors=20)
-neighbors.fit(pca_features)
-distances, indices = neighbors.kneighbors(pca_features)
-
-#send indices to csv file
-similar_day_indices = pd.DataFrame(indices, index=daily_vectors['Date'])
-similar_day_indices.to_csv('D:/Github_extras/similar_days_indices_1950_2023_by_wind.csv')
-# convert distance to dataframe and save to csv with indices
-distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5',
-                                                                            'Day6', 'Day7', 'Day8', 'Day9', 'Day10', 'Day11',
-                                                                                'Day12', 'Day13', 'Day14', 'Day15', 'Day16', 'Day17',
-                                                                                'Day18', 'Day19', 'Day20'])
-distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1950_2021_by_wind.csv')
-
-# calculate days for sun
-current_df = df_sun
-scaler = StandardScaler()
-numeric_columns = ['Global Horizontal Irradiance', 'Direct Horizontal Irradiance', 'Cloud Cover']
-
-current_df[numeric_columns] = scaler.fit_transform(current_df[numeric_columns])
-
-# Reshape data: each row is a day with all hourly readings flattened into a single vector
-daily_vectors = current_df.groupby('Date')[numeric_columns].apply(lambda g: np.ravel(g.values)).reset_index()
-daily_vectors.columns = ['Date', 'Features']
-
-# Find the maximum length
-max_length = max(len(arr) for arr in daily_vectors['Features'].values)
-print("Max Length: ", max_length)
-
-# Pad each array to the maximum length
-padded_features = [np.pad(arr, (0, max_length - len(arr)), mode='constant') for arr in daily_vectors['Features'].values]
-
-# Convert to a 2D array
-features_matrix = np.stack(padded_features)
-pca = PCA(n_components=0.7) # get components till 70% of variance is represented (#TODO: try changing this to check effect on MAPE)
-pca_features = pca.fit_transform(features_matrix)
-
-# Nearest Neighbors for finding similar days
-neighbors = NearestNeighbors(n_neighbors=20)
-neighbors.fit(pca_features)
-distances, indices = neighbors.kneighbors(pca_features)
-
-#send indices to csv file
-similar_day_indices = pd.DataFrame(indices, index=daily_vectors['Date'])
-similar_day_indices.to_csv('D:/Github_extras/similar_days_indices_1950_2023_by_sun.csv')
-# convert distance to dataframe and save to csv with indices
-distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5',
-                                                                            'Day6', 'Day7', 'Day8', 'Day9', 'Day10', 'Day11',
-                                                                                'Day12', 'Day13', 'Day14', 'Day15', 'Day16', 'Day17',
-                                                                                'Day18', 'Day19', 'Day20'])
-distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1950_2021_by_sun.csv')
-
-
+# df_temp_dp = all_data[['UTCISO8601', 'Date', 'Time', 'WhoAmI', 'Temperature', 'Dew Point']]
+# df_wind = all_data[['UTCISO8601', 'Date', 'Time', 'WhoAmI', 'Wind Speed', 'Wind Speed 100']]
+# df_sun = all_data[['UTCISO8601', 'Date', 'Time', 'WhoAmI', 'Global Horizontal Irradiance', 'Direct Horizontal Irradiance', 'Cloud Cover']]
+#
+# # calculate days for temperature and dewpoint
+# current_df = df_temp_dp
+# scaler = StandardScaler()
+# numeric_columns = ['Temperature', 'Dew Point']
+# current_df[numeric_columns] = scaler.fit_transform(current_df[numeric_columns])
+#
+# # Reshape data: each row is a day with all hourly readings flattened into a single vector
+# daily_vectors = current_df.groupby('Date')[numeric_columns].apply(lambda g: np.ravel(g.values)).reset_index()
+# daily_vectors.columns = ['Date', 'Features']
+#
+# # Find the maximum length
+# max_length = max(len(arr) for arr in daily_vectors['Features'].values)
+# print("Max Length: ", max_length)
+#
+# # Pad each array to the maximum length
+# padded_features = [np.pad(arr, (0, max_length - len(arr)), mode='constant') for arr in daily_vectors['Features'].values]
+#
+# # Convert to a 2D array
+# features_matrix = np.stack(padded_features)
+# pca = PCA(n_components=0.7) # get components till 70% of variance is represented (#TODO: try changing this to check effect on MAPE)
+# pca_features = pca.fit_transform(features_matrix)
+#
+# # Nearest Neighbors for finding similar days
+# neighbors = NearestNeighbors(n_neighbors=20)
+# neighbors.fit(pca_features)
+# distances, indices = neighbors.kneighbors(pca_features)
+#
+# #send indices to csv file
+# similar_day_indices = pd.DataFrame(indices, index=daily_vectors['Date'])
+# similar_day_indices.to_csv('D:/Github_extras/similar_days_indices_1950_2023_by_temp_and_dewpoint.csv')
+# # convert distance to dataframe and save to csv with indices
+# distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5',
+#                                                                          'Day6', 'Day7', 'Day8', 'Day9', 'Day10', 'Day11',
+#                                                                              'Day12', 'Day13', 'Day14', 'Day15', 'Day16', 'Day17',
+#                                                                              'Day18', 'Day19', 'Day20'])
+# distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1950_2021_by_temp_and_dewpoint.csv')
+#
+# # calculate days for wind speed
+# current_df = df_wind
+# scaler = StandardScaler()
+# numeric_columns = ['Wind Speed', 'Wind Speed 100']
+# current_df[numeric_columns] = scaler.fit_transform(current_df[numeric_columns])
+#
+# # Reshape data: each row is a day with all hourly readings flattened into a single vector
+# daily_vectors = current_df.groupby('Date')[numeric_columns].apply(lambda g: np.ravel(g.values)).reset_index()
+# daily_vectors.columns = ['Date', 'Features']
+#
+# # Find the maximum length
+# max_length = max(len(arr) for arr in daily_vectors['Features'].values)
+# print("Max Length: ", max_length)
+#
+# # Pad each array to the maximum length
+# padded_features = [np.pad(arr, (0, max_length - len(arr)), mode='constant') for arr in daily_vectors['Features'].values]
+#
+# # Convert to a 2D array
+# features_matrix = np.stack(padded_features)
+# pca = PCA(n_components=0.7) # get components till 70% of variance is represented (#TODO: try changing this to check effect on MAPE)
+# pca_features = pca.fit_transform(features_matrix)
+#
+# # Nearest Neighbors for finding similar days
+# neighbors = NearestNeighbors(n_neighbors=20)
+# neighbors.fit(pca_features)
+# distances, indices = neighbors.kneighbors(pca_features)
+#
+# #send indices to csv file
+# similar_day_indices = pd.DataFrame(indices, index=daily_vectors['Date'])
+# similar_day_indices.to_csv('D:/Github_extras/similar_days_indices_1950_2023_by_wind.csv')
+# # convert distance to dataframe and save to csv with indices
+# distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5',
+#                                                                             'Day6', 'Day7', 'Day8', 'Day9', 'Day10', 'Day11',
+#                                                                                 'Day12', 'Day13', 'Day14', 'Day15', 'Day16', 'Day17',
+#                                                                                 'Day18', 'Day19', 'Day20'])
+# distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1950_2021_by_wind.csv')
+#
+# # calculate days for sun
+# current_df = df_sun
+# scaler = StandardScaler()
+# numeric_columns = ['Global Horizontal Irradiance', 'Direct Horizontal Irradiance', 'Cloud Cover']
+#
+# current_df[numeric_columns] = scaler.fit_transform(current_df[numeric_columns])
+#
+# # Reshape data: each row is a day with all hourly readings flattened into a single vector
+# daily_vectors = current_df.groupby('Date')[numeric_columns].apply(lambda g: np.ravel(g.values)).reset_index()
+# daily_vectors.columns = ['Date', 'Features']
+#
+# # Find the maximum length
+# max_length = max(len(arr) for arr in daily_vectors['Features'].values)
+# print("Max Length: ", max_length)
+#
+# # Pad each array to the maximum length
+# padded_features = [np.pad(arr, (0, max_length - len(arr)), mode='constant') for arr in daily_vectors['Features'].values]
+#
+# # Convert to a 2D array
+# features_matrix = np.stack(padded_features)
+# pca = PCA(n_components=0.7) # get components till 70% of variance is represented (#TODO: try changing this to check effect on MAPE)
+# pca_features = pca.fit_transform(features_matrix)
+#
+# # Nearest Neighbors for finding similar days
+# neighbors = NearestNeighbors(n_neighbors=20)
+# neighbors.fit(pca_features)
+# distances, indices = neighbors.kneighbors(pca_features)
+#
+# #send indices to csv file
+# similar_day_indices = pd.DataFrame(indices, index=daily_vectors['Date'])
+# similar_day_indices.to_csv('D:/Github_extras/similar_days_indices_1950_2023_by_sun.csv')
+# # convert distance to dataframe and save to csv with indices
+# distances_df = pd.DataFrame(distances, index=daily_vectors['Date'], columns=['Day1', 'Day2', 'Day3', 'Day4', 'Day5',
+#                                                                             'Day6', 'Day7', 'Day8', 'Day9', 'Day10', 'Day11',
+#                                                                                 'Day12', 'Day13', 'Day14', 'Day15', 'Day16', 'Day17',
+#                                                                                 'Day18', 'Day19', 'Day20'])
+# distances_df.to_csv('D:/Github_extras/Texas_1940-2023/distances1950_2021_by_sun.csv')
+#
+#
 
 
 #     #separate the date and time from the 'UTCISO8601' column into 'Date' and 'Time' columns

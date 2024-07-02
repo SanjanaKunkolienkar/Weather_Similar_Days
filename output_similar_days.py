@@ -16,13 +16,13 @@ st.set_page_config(
 #alt.themes.enable("dark")
 cwd = os.getcwd() # streamlit only uses 'relative to root' paths
 
-def get_data(filemetric):
-    if filemetric == 'All 5 measurements':
+def get_data(metric, filename):
+    if metric == 'All 5 measurements':
         similar_days_distances = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/distances1950_2021.csv'))
         similar_days_indices = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/similar_days_indices_1950_2021.csv'))
     else:
-        similar_days_distances = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/distances1950_2021_by_{}.csv'.format(filemetric)))
-        similar_days_indices = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/similar_days_indices_1950_2021_by_{}.csv'.format(filemetric)))
+        similar_days_distances = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/distances1950_2023_by_{}.csv'.format(filename)))
+        similar_days_indices = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/similar_days_indices_1950_2023_by_{}.csv'.format(filename)))
     return similar_days_distances, similar_days_indices
 
 def display_similar_days(df, indices, date, col):
@@ -42,8 +42,12 @@ def display_similar_days(df, indices, date, col):
     return similar_days
 
 def get_data_from_aux():
-    aux_file_path = os.path.join(cwd, 'Weather Aux By Years/mean_weather_data_1950_2021.csv')
-    mean_weather_data = pd.read_csv(aux_file_path, index_col=0)
+    csv_file_path = os.path.join(cwd, 'Weather Aux By Years/mean_weather_data_1950_2023.csv')
+    mean_weather_data = pd.read_csv(csv_file_path, index_col=0)
+
+    # convert Date and Hour columns to datetime
+    mean_weather_data[['Date', 'Time']] = mean_weather_data['UTCISO8601'].str.replace('Z', '').str.split('T', expand=True)
+    mean_weather_data['DateTime'] = mean_weather_data['Date'] + ' ' + mean_weather_data['Time']
 
     mean_weather_data['DateTime'] = pd.to_datetime(mean_weather_data['DateTime'])
     # convert date time to subtract 5 hours
@@ -53,9 +57,10 @@ def get_data_from_aux():
 
 def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metrics, y_labels, colors, col, texas_gen, selected_day):
 
-    allopts = ['Temperature', 'Dew Point', 'Wind Speed', 'Cloud Cover']
+    allopts = ['Temperature', 'Dew Point', 'Wind Speed', 'Cloud Cover', 'Global Horizontal Irradiance', 'Direct Horizontal Irradiance',
+               'Wind Speed 100']
 
-    # split DateTime into Date and Hour for mean_weather_data
+    # # split DateTime into Date and Hour for mean_weather_data
     mean_weather_data[['Date', 'Hour']] = mean_weather_data['Texas_DateTime'].astype(str).str.split(' ', expand=True)
 
     # st.write('Mean Weather Data:')
@@ -70,7 +75,9 @@ def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metric
     # get hour
     data_to_plot['Hour'] = data_to_plot['Texas_DateTime'].dt.hour  # Extract hour for plotting
 
-    mape= pd.DataFrame()
+    print(data_to_plot)
+
+    mape = pd.DataFrame()
     temp_din = data_to_plot[data_to_plot['Date'] == selected_day]
     temp_din.reset_index(inplace=True)
     for din in similar_days:
@@ -90,7 +97,7 @@ def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metric
         st.subheader('Weather Profiles for Similar Days')
         # Create subplots dynamically
         fig = make_subplots(rows=len(metrics), cols=1, shared_xaxes=False,
-                            subplot_titles=[f"{metric} Profiles" for metric in metrics])
+                            subplot_titles=[f"{metric} Profile" for metric in metrics])
 
         # Plot each metric for similar days
         for row, (metric, y_label) in enumerate(zip(metrics, y_labels), start=1):
@@ -269,26 +276,31 @@ try:
     with st.sidebar:
         option = st.selectbox(
             "Find similar days based on: ",
-            ('All 5 measurements', 'temperature', 'windspeed', 'cloudcover'))
+            ('All 5 measurements', 'Temperature and Dew Point', 'Wind Speed', 'GHI, DHI and Cloud Cover'))
 
         metrics = []
+
         y_labels = []
         colors = ['orange', 'blue', 'green', 'red']
 
         if option == 'All 5 measurements':
+            filename = ''
             metrics = ['Temperature', 'Dew Point', 'Cloud Cover']
             y_labels = metrics
-        elif option == 'temperature': #by temperature and dew point
-            metrics = ['Temperature']
+        elif option == 'Temperature and Dew Point': #by temperature and dew point
+            filename = 'temp_and_dewpoint'
+            metrics = ['Temperature', 'Dew Point']
             y_labels = metrics
-        elif option == 'windspeed': #wind speed (not 100m)
-            metrics = ['Wind Speed']
+        elif option == 'Wind Speed': #not including wind direction
+            filename = 'windspeed'
+            metrics = ['Wind Speed', 'Wind Speed 100']
             y_labels = metrics
-        elif option == 'cloudcover':
-            metrics = ['Cloud Cover']
+        elif option == 'GHI, DHI and Cloud Cover':
+            filename = 'sun'
+            metrics = ['Cloud Cover', 'Global Horizontal Irradiance', 'Direct Horizontal Irradiance']
             y_labels = metrics
 
-        df, indices = get_data(option)
+        df, indices = get_data(option, filename)
         min_value = df['Date'].unique()[0]
         mac_value = df['Date'].unique()[-1]
         date = st.select_slider(
