@@ -1,3 +1,6 @@
+import sys
+sys.path.append('D:/Github/SimDay-Analytics/scripts/')
+
 import pandas as pd
 import os
 import win32com.client
@@ -9,17 +12,18 @@ import powerworld_functions as pwf
 
 st.set_page_config(
     page_title="Texas Weather Dashboard",
-    page_icon="🏂",
+    page_icon=":sunny:",
     layout="wide",
     initial_sidebar_state="expanded")
 
 #alt.themes.enable("dark")
 cwd = os.getcwd() # streamlit only uses 'relative to root' paths
 
+
 def get_data(metric, filename):
     if metric == 'All 5 measurements':
-        similar_days_distances = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/distances1950_2021.csv'))
-        similar_days_indices = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/similar_days_indices_1950_2021.csv'))
+        similar_days_distances = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/distances1950_2023_by_all.csv'))
+        similar_days_indices = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/similar_days_indices_1950_2023_by_all.csv'))
     else:
         similar_days_distances = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/distances1950_2023_by_{}.csv'.format(filename)))
         similar_days_indices = pd.read_csv(os.path.join(cwd, 'Weather_Data_1950_2021/similar_days_indices_1950_2023_by_{}.csv'.format(filename)))
@@ -42,7 +46,7 @@ def display_similar_days(df, indices, date, col):
     return similar_days
 
 def get_data_from_aux():
-    csv_file_path = os.path.join(cwd, 'Weather Aux By Years/mean_weather_data_1950_2023.csv')
+    csv_file_path = os.path.join(cwd, 'Weather Aux By Years/mean_weather_data_1950_2021.csv')
     mean_weather_data = pd.read_csv(csv_file_path, index_col=0)
 
     # convert Date and Hour columns to datetime
@@ -74,8 +78,6 @@ def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metric
     # st.write(data_to_plot.head())
     # get hour
     data_to_plot['Hour'] = data_to_plot['Texas_DateTime'].dt.hour  # Extract hour for plotting
-
-    print(data_to_plot)
 
     mape = pd.DataFrame()
     temp_din = data_to_plot[data_to_plot['Date'] == selected_day]
@@ -137,7 +139,7 @@ def get_weather_for_similar_days(mean_weather_data, similar_days, my_bar, metric
     my_bar.progress(20, text='Weather data loaded successfully!')
 
     if option != 'All 5 measurements':
-        with col[1]:
+        with col[0]:
             st.subheader(' ')
             allplotopts = list(set(allopts) - set(metrics))
             metrics = []
