@@ -1,8 +1,8 @@
-from esa import saw
 import os
 import logging
 import win32com.client
 import pandas as pd
+import pythoncom
 
 cwd = os.getcwd()
 pww_filepath = "D:/Github_extras/Texas_1940-2023/Texas_ByTwoYears/"
@@ -22,66 +22,48 @@ def CheckResultForError(SimAutoOutput, Message):
         print(Message)
         return Message
 
-try:
-    logger.info("Trying to connect to PowerWorld")
-    pw_object = win32com.client.Dispatch("pwrworld.SimulatorAuto")
-except Exception as e:
-    logger.error(f"Error connecting to PowerWorld: {e}")
+def get_generator_data():
+    try:
+        logger.info("Trying to connect to PowerWorld")
+        pw_object = win32com.client.Dispatch("pwrworld.SimulatorAuto", pythoncom.CoInitialize())
+    except Exception as e:
+        logger.error(f"Error connecting to PowerWorld: {e}")
 
-result = pw_object.RunScriptCommand('NewCase;')
-logger.info(f"{CheckResultForError(result, 'New Case created')}")
+    result = pw_object.RunScriptCommand('NewCase;')
+    logger.info(f"{CheckResultForError(result, 'New Case created')}")
 
-result = pw_object.ProcessAuxFile(aux_filepath)
-logger.info(f"{CheckResultForError(result, 'Aux files loaded successfully')}")
+    result = pw_object.ProcessAuxFile(aux_filepath)
+    logger.info(f"{CheckResultForError(result, 'Aux files loaded successfully')}")
 
-result = pw_object.RunScriptCommand('SolvePowerFlow(DC);')
-logger.info(f"{CheckResultForError(result, 'Solved Power Flow')}")
+    result = pw_object.RunScriptCommand('SolvePowerFlow(DC);')
+    logger.info(f"{CheckResultForError(result, 'Solved Power Flow')}")
 
-# get a list of files in the pww_filepath directory
-files = os.listdir(pww_filepath)
+    # get substation data from powerworld
+    result = pw_object.GetParametersMultipleElement('Gen', ['BusNum', 'Latitude:1', 'Longitude:1', 'FuelType'], '')
+    logger.info(f"{CheckResultForError(result, 'Substation data retrieved')}")
 
-var_list = ['TimeDomainDateTimeUTC', 'WhoAmI', 'WeatherValue']
-# for i in range(1, 24):
-#     var_list.append(f'WeatherValue:{i}')
+    gen_df = pd.DataFrame({f"Column{i + 1}": [x.strip() if x is not None else None for x in column] for i, column in
+                              enumerate(result[1])})
+    gen_df.columns = ['BusNum', 'latitude', 'longitude', 'FuelType']
+    # print(gen_df.head)
 
-# df_results = pd.DataFrame(columns = ['Date', 'TempAvg', 'TempMin', 'TempMax', 'DewPointAvg', 'DewPointMin', 'DewPointMax',
-#                   'WindSpeedAvg', 'WindSpeedMin', 'WindSpeedMax', 'WindDirAvg', 'WindDirMin', 'WindDirMax',
-#                   'CloudCoverAvg', 'CloudCoverMin', 'CloudCoverMax', 'WindSpeed100Avg', 'WindSpeed100Min', 'WindSpeed100Max',
-#                   'GlobHorIrradAvg', 'GlobHorIrradMin', 'GlobHorIrradMax', 'DirNormIrradAvg', 'DirNormIrradMin', 'DirNormIrradMax'])
+    # print unique fuel types
+    fuel_types = gen_df['FuelType'].unique()
+    # print(fuel_types)
 
-df_results = pd.DataFrame()
-for file in files:
-    print("Filename: ", file[:-4])
-    pww_file = os.path.join(pww_filepath, file)
-    #pww_file = "D:/Github/Weather_Similar_Days/Texas_Q2_3.pww"
-    #command = 'TimeStepAppendPWW("{}", Single Solution)'.format(pww_file)
-    aux_file = "D:/Github_extras/1977_weather.aux"
-    command = 'LoadAux("{}", YES)'.format(aux_file)
-    result_timestep = pw_object.RunScriptCommand(command)
-    logger.info(f"{CheckResultForError(result_timestep, 'PWW file loaded successfully')}")
+    ren = ['SUN (Solar)', 'WND (Wind)']
+    # filter the dataframe for solar and wind generators
+    gen_df = gen_df[gen_df['FuelType'].isin(ren)]
+    # print(gen_df.head)
 
+    gen_df.reset_index(drop=True, inplace=True)
 
-    command2 = 'SaveData("{}", AUX, TimePointWeather, "{}", [], )'
-    #pw_object.GetParametersMultipleElement('TimePointWeather', var_list, '')
-    logger.info(f"{CheckResultForError(result_timestep, 'Data saved successfully')}")
-    data = result_timestep[1]
-    df_data = pd.DataFrame({f"Column{i + 1}": [x.strip() if x is not None else None for x in column] for i, column in
-                          enumerate(data)})
-    # df_data.columns = ['Date', 'TempAvg', 'TempMin', 'TempMax', 'DewPointAvg', 'DewPointMin', 'DewPointMax',
-    #           'WindSpeedAvg', 'WindSpeedMin', 'WindSpeedMax', 'WindDirAvg', 'WindDirMin', 'WindDirMax',
-    #           'CloudCoverAvg', 'CloudCoverMin', 'CloudCoverMax', 'WindSpeed100Avg', 'WindSpeed100Min', 'WindSpeed100Max',
-    #           'GlobHorIrradAvg', 'GlobHorIrradMin', 'GlobHorIrradMax', 'DirNormIrradAvg', 'DirNormIrradMin', 'DirNormIrradMax']
-    print(df_data.tail(5))
-    #conver all columns except Date to float
-    df_data.iloc[:, 1:] = df_data.iloc[:, 1:].astype(float)
+    # convert latitude and longitude to float
+    gen_df['latitude'] = gen_df['latitude'].astype(float)
+    gen_df['longitude'] = gen_df['longitude'].astype(float)
 
-    command_del = 'TimeStepDeleteAll;'
-    result_timestep = pw_object.RunScriptCommand(command_del)
+    # Map numeric categories to specific colors
+    color_map = {'SUN (Solar)': '#EDD83D', 'WND (Wind)': '#6AB547'}  # Hex color codes with a hash prefix
+    gen_df['color'] = gen_df['FuelType'].map(color_map)  # Create a new column for colors
 
-    df_byday = df_data.groupby('Date').mean()
-    # combine dataframe df_byday for all for loops
-    df_results = pd.concat([df_results, df_byday])
-    print(df_results)
-    #df_results.to_csv('D:/Github_extras/Texas_1940-2023/Texas_1940_2023.csv')
-
-    del pw_object
+    return gen_df
