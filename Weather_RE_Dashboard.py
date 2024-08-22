@@ -1,9 +1,15 @@
+# Description: This script is used to create a Streamlit dashboard that displays the weather and renewable energy insights
+# for a selected date. The dashboard shows the weather profiles for the selected date and the three most similar days.
+# It also displays the renewable generation for the selected date and the three most similar days. The dashboard also
+# shows the similarity between the selected date and the three most similar days using heatmaps.
+
+# created by: Sanjana Kunkolienkar
+# last update date: 2024-08-22
+
+
 import os
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from datetime import datetime
 from plotly.subplots import make_subplots
 from main import get_generator_data
 import plotly.graph_objects as go
